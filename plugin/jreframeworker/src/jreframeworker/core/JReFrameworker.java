@@ -51,6 +51,7 @@ public class JReFrameworker {
 	public static final String SOURCE_DIRECTORY = "src";
 	public static final String BINARY_DIRECTORY = "bin";
 	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "JReFrameworkerAnnotations.jar";
+	public static final String LIBRARY_DIRECTORY = "lib";
 	
 	public static LinkedList<IJavaProject> getJReFrameworkerProjects(){
 		LinkedList<IJavaProject> projects = new LinkedList<IJavaProject>();

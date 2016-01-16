@@ -2,6 +2,7 @@ package jreframeworker.engine.utils;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -39,6 +40,36 @@ public class JarModifier {
 	 * The directory that stores the manifest and jar signatures
 	 */
 	public static final String META_INF = "META-INF";
+	
+	/**
+	 * Extracts a Jar file
+	 * 
+	 * @param inputJar
+	 * @param outputPath
+	 * @throws IOException
+	 */
+	public static void unjar(File inputJar, File outputPath) throws IOException {
+		outputPath.mkdirs();
+		JarFile jar = new JarFile(inputJar);
+		Enumeration<JarEntry> jarEntries = jar.entries();
+		while (jarEntries.hasMoreElements()) {
+			JarEntry jarEntry = jarEntries.nextElement();
+			File file = new File(outputPath.getAbsolutePath() + java.io.File.separator + jarEntry.getName());
+			new File(file.getParent()).mkdirs();
+			if (jarEntry.isDirectory()) {
+				file.mkdir();
+				continue;
+			}
+			InputStream is = jar.getInputStream(jarEntry);
+			FileOutputStream fos = new FileOutputStream(file);
+			while (is.available() > 0) {
+				fos.write(is.read());
+			}
+			fos.close();
+			is.close();
+		}
+		jar.close();
+	}
 	
 	private HashMap<String,JarEntry> jarEntries = new HashMap<String,JarEntry>();
 	private HashMap<String,byte[]> jarEntriesToAdd = new HashMap<String,byte[]>();
@@ -92,15 +123,34 @@ public class JarModifier {
 		return jarFile;
 	}
 	
+//	public byte[] extractEntry(String entry) throws IOException {
+//		JarInputStream zin = new JarInputStream(new BufferedInputStream(new FileInputStream(jarFile)));
+//		JarEntry currentEntry = null;
+//		while ((currentEntry = zin.getNextJarEntry()) != null) {
+//			if (currentEntry.getName().equals(entry)) {
+//				byte[] bytes = new byte[(int) currentEntry.getSize()];
+//				zin.read(bytes);
+//				zin.close();
+//				return bytes;
+//			}
+//		}
+//		zin.close();
+//		return null;
+//	}
+	
 	public byte[] extractEntry(String entry) throws IOException {
 		JarInputStream zin = new JarInputStream(new BufferedInputStream(new FileInputStream(jarFile)));
 		JarEntry currentEntry = null;
 		while ((currentEntry = zin.getNextJarEntry()) != null) {
 			if (currentEntry.getName().equals(entry)) {
-				byte[] bytes = new byte[(int) currentEntry.getSize()];
-				zin.read(bytes);
-				zin.close();
-				return bytes;
+				ByteArrayOutputStream out = new ByteArrayOutputStream();
+				byte[] buffer = new byte[1024];
+				while (true) {
+				    int r = zin.read(buffer);
+				    if (r == -1) break;
+				    out.write(buffer, 0, r);
+				}
+				return out.toByteArray();
 			}
 		}
 		zin.close();

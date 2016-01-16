@@ -89,6 +89,12 @@ public class Engine {
 		return processed;
 	}
 	
+	public void addUnprocessed(byte[] inputClass, boolean overwrite) throws IOException {
+		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
+		String qualifiedClassName = classNode.name + ".class";
+		runtimeModifications.add(qualifiedClassName, inputClass, overwrite);
+	}
+	
 	public void save(File outputFile) throws IOException {
 		runtimeModifications.save(outputFile);
 	}

@@ -1,15 +1,11 @@
 package jreframeworker.builder;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map;
-
-import jreframeworker.core.JReFrameworker;
-import jreframeworker.engine.Engine;
-import jreframeworker.log.Log;
-import jreframeworker.ui.PreferencesPage;
 
 import org.apache.commons.io.FileDeleteStrategy;
 import org.eclipse.core.resources.IProject;
@@ -24,6 +20,12 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.launching.LibraryLocation;
+
+import jreframeworker.core.JReFrameworker;
+import jreframeworker.engine.Engine;
+import jreframeworker.engine.utils.JarModifier;
+import jreframeworker.log.Log;
+import jreframeworker.ui.PreferencesPage;
 
 public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	
@@ -121,6 +123,32 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				buildProject(binDirectory, jProject, engine, config);
 				config.close();
 				File modifiedRuntime = new File(runtimesDirectory.getCanonicalPath() + File.separatorChar + "rt.jar");
+				
+				// add the class files from libraries
+				// TODO: cross-reference with jar dependencies (don't add unreferenced libraries)
+				File libDirectory = jProject.getProject().getFolder(JReFrameworker.LIBRARY_DIRECTORY).getLocation().toFile();
+				for(File jarFile : libDirectory.listFiles()){
+					if(jarFile.getName().endsWith(".jar")){
+//						JarModifier jar = new JarModifier(jarFile);
+//						for(String entry : jar.getJarEntrySet()){
+//							byte[] classFileBytes = jar.extractEntry(entry);
+//							engine.addUnprocessed(classFileBytes, true);
+//						}
+						
+						File outputDirectory = new File(jarFile.getParentFile().getAbsolutePath() + File.separatorChar + "." + jarFile.getName().replace(".jar", ""));
+						JarModifier.unjar(jarFile, outputDirectory);
+						for(File classFile : outputDirectory.listFiles()){
+							if(classFile.getName().endsWith(".class")){
+								engine.addUnprocessed(Files.readAllBytes(classFile.toPath()), true);
+							}
+						}
+						
+						// cleanup
+						delete(outputDirectory);
+					}
+				}
+				
+				// create the runtime
 				engine.save(modifiedRuntime);
 			} catch (IOException e) {
 				Log.error("Error building " + jProject.getProject().getName(), e);
@@ -134,6 +162,15 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		} else {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
 		}
+	}
+	
+	private void delete(File f) throws IOException {
+		if (f.isDirectory()) {
+			for (File c : f.listFiles())
+				delete(c);
+		}
+		if (!f.delete())
+			throw new FileNotFoundException("Failed to delete file: " + f);
 	}
 	
 	private File getOriginalRuntime() throws IOException {
